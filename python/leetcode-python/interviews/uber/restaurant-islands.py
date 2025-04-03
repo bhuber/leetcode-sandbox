@@ -62,27 +62,40 @@ class FirstSolution:
         return self.__repr__()
 
 
-class BetterSolution(FirstSolution):
+
+class CorrectSolution(FirstSolution):
     # Better solution, which is the same as the original, but with fixed logic for
     # _update_neighbor_islands. It still contains a bug though
 
     def _update_neighbor_islands(self, r: int, c: int, neighbor_islands: Set[int]):
-        root = min(self._island_root(i) for i in neighbor_islands)
+        # PRE and POST conditions:
+        #  1. Each island id appears in exactly 1 logical island
+        #  2. for each island_id within a given logical island i,
+        #    self.island_roots[island_id] == min(island_id for island_id in island),
+        #    i.e. the root of every island id in a given island is the min id for that island
+        #  3. PRE 2) => Each chain in self.island_roots is of length 0 or 1.
+        #    i.e. either self.island_roots[x] == x, or self.island_roots[self.island_roots[x]] == self.island_roots[x]
+
+        # each entry in neighbor_islands is an island_id in an island that is being merged together
+        # in this function.  PRE 2) implies that the min of their roots will be the min island_id for
+        # their new merged island
+        root = min(self.island_roots[i] for i in neighbor_islands)
         self.islands[r][c] = root
         for ni in neighbor_islands:
-            #if self._island_root(ni) != root:
             if self.island_roots[ni] != root:
-                self.island_roots[ni] = root
-                self.n_islands -= 1
+                # All islands get merged into the island with smallest id (i.e. root)
+                # This is the merge logic.
 
-    def _island_root(self, island):
-        if self.island_roots[island] != island:
-            # Path compression - follow chain of parents to real root, and update them all to point
-            # to the real root.
-            # The real root has itself as its parent
-            # See https://en.wikipedia.org/wiki/Disjoint-set_data_structure#Finding_set_representatives
-            self.island_roots[island] = self._island_root(self.island_roots[island])
-        return self.island_roots[island]
+                # Update the roots as necessary.
+                # For example, if we have island_roots \superset {4: 3, 3: 3}, root = 1, and ni = 4,
+                # we need to update both island_roots[4] and island_roots[3].
+                # By PRE 3), we don't have to search any deeper.
+                # Note the order matters here, we have to update the parent before the child
+                self.island_roots[self.island_roots[ni]] = root
+                self.island_roots[ni] = root
+
+                # When an island is merged into another, we have one less island
+                self.n_islands -= 1
 
 
 class SimpleAssert:
